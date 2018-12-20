@@ -19,11 +19,9 @@ describe LogStash::Outputs::Solr do
         'url' => 'http://localhost:8983/solr/collection1',
         'zk_host' => 'localhost:2181/solr',
         'collection' => 'collection1',
-        'defined_fields' => ['id', 'title'],
-        'ignore_undefined_fields' => true,
-        'unique_key_field' => 'id',
-        'timestamp_field' => 'event_timestamp',
-        'flush_size' => 100
+        'flush_size' => 100,
+        'commit' => false,
+        'commitWithin' => 10000
       }
     }
 
@@ -42,29 +40,19 @@ describe LogStash::Outputs::Solr do
       expect(output.config['collection']).to eq('collection1')
     end
 
-    it 'defined_fields' do
-      output = LogStash::Outputs::Solr.new(config)
-      expect(output.config['defined_fields']).to eq(['id', 'title'])
-    end
-
-    it 'ignore_undefined_fields' do
-      output = LogStash::Outputs::Solr.new(config)
-      expect(output.config['ignore_undefined_fields']).to eq(true)
-    end
-    
-    it 'unique_key_field' do
-      output = LogStash::Outputs::Solr.new(config)
-      expect(output.config['unique_key_field']).to eq('id')
-    end
-
-    it 'timestamp_field' do
-      output = LogStash::Outputs::Solr.new(config)
-      expect(output.config['timestamp_field']).to eq('event_timestamp')
-    end
-
     it 'flush_size' do
       output = LogStash::Outputs::Solr.new(config)
       expect(output.config['flush_size']).to eq(100)
+    end
+
+    it 'commit' do
+      output = LogStash::Outputs::Solr.new(config)
+      expect(output.config['commit']).to eq(false)
+    end
+
+    it 'commitWithin' do
+      output = LogStash::Outputs::Solr.new(config)
+      expect(output.config['commitWithin']).to eq(10000)
     end
   end
 
@@ -72,10 +60,6 @@ describe LogStash::Outputs::Solr do
     let(:config) {
       {
         'url' => 'http://localhost:8983/solr/collection1',
-        'defined_fields' => ['id', 'title'],
-        'ignore_undefined_fields' => true,
-        'unique_key_field' => 'id',
-        'timestamp_field' => 'event_timestamp',
         'flush_size' => 100
       }
     }
@@ -102,10 +86,6 @@ describe LogStash::Outputs::Solr do
       {
         'zk_host' => 'localhost:3292/solr',
         'collection' => 'collection1',
-        'defined_fields' => ['id', 'title'],
-        'ignore_undefined_fields' => true,
-        'unique_key_field' => 'id',
-        'timestamp_field' => 'event_timestamp',
         'flush_size' => 100
       }
     }
@@ -123,10 +103,6 @@ describe LogStash::Outputs::Solr do
     let(:config) {
       {
         'url' => 'http://localhost:8983/solr/collection1',
-        'defined_fields' => ['id', 'title'],
-        'ignore_undefined_fields' => true,
-        'unique_key_field' => 'id',
-        'timestamp_field' => 'event_timestamp',
         'flush_size' => 100
       }
     }
@@ -159,10 +135,6 @@ describe LogStash::Outputs::Solr do
       {
         'zk_host' => 'localhost:3292/solr',
         'collection' => 'collection1',
-        'defined_fields' => ['id', 'title'],
-        'ignore_undefined_fields' => true,
-        'unique_key_field' => 'id',
-        'timestamp_field' => 'event_timestamp',
         'flush_size' => 100
       }
     }
@@ -194,14 +166,8 @@ describe LogStash::Outputs::Solr do
     zk = ZK.new('localhost:3292')
     delete_nodes(zk, '/solr')
     create_nodes(zk, '/solr/live_nodes')
-    create_nodes(zk, '/solr/collections')
     ['localhost:8983_solr'].each do |node|
       zk.create("/solr/live_nodes/#{node}", '', mode: :ephemeral)
-    end
-    ['collection1'].each do |collection|
-      zk.create("/solr/collections/#{collection}")
-      json = File.read("spec/files/collections/#{collection}/state.json")
-      zk.create("/solr/collections/#{collection}/state.json", json, mode: :ephemeral)
     end
   end
 

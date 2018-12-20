@@ -22,15 +22,11 @@ class LogStash::Outputs::Solr < LogStash::Outputs::Base
   # The SolrCloud collection name.
   config :collection, :validate => :string, :default => 'collection1'
 
-  # The defined fields in the Solr schema.xml. If omitted, it will get fields via Solr Schema API.
-  config :defined_fields, :validate => :array, :default => nil
-  # Ignore undefined fields in the Solr schema.xml.
-  config :ignore_undefined_fields, :validate => :boolean, :default => false
+  # Commit every batch?
+  config :commit, :validate => :boolean, :default => false
 
-  # A field name of unique key in the Solr schema.xml. If omitted, it will get unique key via Solr Schema API.
-  config :unique_key_field, :validate => :string, :default => nil
-  # A field name of event timestamp in the Solr schema.xml (default event_timestamp).
-  config :timestamp_field, :validate => :string, :default => 'event_timestamp'
+  # Solr commitWithin parameter
+  config :commitWithin, :validate => :number, :default => 10000
 
   # The batch size used in update.
   config :flush_size, :validate => :number, :default => 100
@@ -77,44 +73,29 @@ class LogStash::Outputs::Solr < LogStash::Outputs::Base
   def flush(events, close=false)
     documents = []
 
-    @fields = @defined_fields.nil? || @defined_fields.empty? ? get_fields : @defined_fields
-
-    @unique_key = @unique_key_field.nil? ? get_unique_key : @unique_key_field
-
     events.each do |event|
       document = event.to_hash()
-
-      unless document.has_key?(@unique_key) then
-        document.merge!({@unique_key => SecureRandom.uuid})
-      end
-
-      unless document.has_key?(@timestamp_field) then
-        document.merge!({@timestamp_field => document['@timestamp']})
-      end
-
-      if @ignore_undefined_fields then
-        document.each_key do |key|
-          unless @fields.include?(key) then
-            document.delete(key)
-          end
-        end
-      end
 
       @logger.info 'Record: %s' % document.inspect
 
       documents.push(document)
     end
 
+    params = {}
+    if @commit
+      params[:commit] = true
+    end  
+    params[:commitWithin] = @commitWithin
     if @mode == MODE_STANDALONE then
-      @solr.add documents, :params => {:commit => true}
+      @solr.add documents, :params => params
       @logger.info 'Added %d document(s) to Solr' % documents.count
     elsif @mode == MODE_SOLRCLOUD then
-      @solr.add documents, collection: @collection, :params => {:commit => true}
+      @solr.add documents, collection: @collection, :params => params
       @logger.info 'Added %d document(s) to Solr' % documents.count
     end
 
     rescue Exception => e
-      @logger.warn('An error occurred while indexing: #{e.message}')
+      @logger.warn("An error occurred while indexing", :exception => e.inspect)
   end # def flush
 
   public
@@ -124,44 +105,4 @@ class LogStash::Outputs::Solr < LogStash::Outputs::Base
     end
   end # def close
 
-  private
-  def get_unique_key
-    response = nil
-
-    if @mode == MODE_STANDALONE then
-      response = @solr.get 'schema/uniquekey'
-    elsif @mode == MODE_SOLRCLOUD then
-      response = @solr.get 'schema/uniquekey', collection: @collection
-    end
-
-    unique_key = response['uniqueKey']
-    @logger.info 'Unique key: #{unique_key}'
-
-    return unique_key
-
-    rescue Exception => e
-      @logger.warn 'Unique key: #{e.message}'
-  end # def get_unique_key
-
-  private
-  def get_fields
-    response = nil
-
-    if @mode == MODE_STANDALONE then
-      response = @solr.get 'schema/fields'
-    elsif @mode == MODE_SOLRCLOUD then
-      response = @solr.get 'schema/fields', collection: @collection
-    end
-
-    fields = []
-    response['fields'].each do |field|
-      fields.push(field['name'])
-    end
-    @logger.info 'Fields: #{fields}'
-
-    return fields
-
-    rescue Exception => e
-      @logger.warn 'Fields: #{e.message}'
-  end # def get_fields
 end # class LogStash::Outputs::Solr

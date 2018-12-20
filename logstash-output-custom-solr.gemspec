@@ -1,6 +1,6 @@
 Gem::Specification.new do |s|
   s.name = 'logstash-output-custom-solr'
-  s.version = "0.1.3"
+  s.version = "0.1.6"
   s.licenses = ["Apache License (2.0)"]
   s.summary = "Logstash output plugin for sending data to Solr."
   s.description = "Logstash output plugin for sending data to Solr. It supports SolrCloud, not only Standalone Solr."
@@ -23,7 +23,7 @@ Gem::Specification.new do |s|
   
   s.add_runtime_dependency 'rsolr', '~> 1.1.2'
   s.add_runtime_dependency 'zk'
-  s.add_runtime_dependency 'rsolr-cloud'
+  s.add_runtime_dependency 'rsolr-cloud-custom'
   s.add_runtime_dependency 'stud'
 
   s.add_development_dependency "logstash-core", ">= 1.60", "<= 2.99"
