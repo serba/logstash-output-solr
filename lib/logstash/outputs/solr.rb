@@ -25,6 +25,12 @@ class LogStash::Outputs::Solr < LogStash::Outputs::Base
   # Commit every batch?
   config :commit, :validate => :boolean, :default => false
 
+  # A field name of unique key in the Solr schema.xml (default id)
+  config :unique_key_field, :validate => :string, :default => 'id'
+  
+  # A field name of event timestamp in the Solr schema.xml (default event_timestamp).
+  config :timestamp_field, :validate => :string, :default => 'timestamp_tdt'
+
   # Solr commitWithin parameter
   config :commitWithin, :validate => :number, :default => 10000
 
@@ -76,6 +82,14 @@ class LogStash::Outputs::Solr < LogStash::Outputs::Base
     events.each do |event|
       document = event.to_hash()
 
+      unless document.has_key?(@unique_key) then
+        document.merge!({@unique_key => SecureRandom.uuid})
+      end
+      
+      unless document.has_key?(@timestamp_field) then
+        document.merge!({@timestamp_field => document['@timestamp']})
+      end
+      
       @logger.info 'Record: %s' % document.inspect
 
       documents.push(document)

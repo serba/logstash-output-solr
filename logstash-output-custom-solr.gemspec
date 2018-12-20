@@ -1,6 +1,6 @@
 Gem::Specification.new do |s|
   s.name = 'logstash-output-custom-solr'
-  s.version = "0.1.6"
+  s.version = "0.1.7"
   s.licenses = ["Apache License (2.0)"]
   s.summary = "Logstash output plugin for sending data to Solr."
   s.description = "Logstash output plugin for sending data to Solr. It supports SolrCloud, not only Standalone Solr."
