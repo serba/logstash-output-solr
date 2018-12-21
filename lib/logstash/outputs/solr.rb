@@ -113,7 +113,7 @@ class LogStash::Outputs::Solr < LogStash::Outputs::Base
     end  
     params[:commitWithin] = @commitWithin
     
-    hash.each do |collection, documents|
+    documents_per_col.each do |collection, documents|
       if @mode == MODE_STANDALONE then
         @solr.add documents, :params => params
         @logger.info 'Added %d document(s) to Solr' % documents.count
