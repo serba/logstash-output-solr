@@ -55,15 +55,16 @@ class LogStash::Outputs::Solr < LogStash::Outputs::Base
       @mode = MODE_SOLRCLOUD
     end
 
-    @solr = nil
+    @solr_std = {}
+    @solr_cloud = nil
     @zk = nil
 
     if @mode == MODE_STANDALONE then
-      @solr = RSolr.connect :url => @url
+      @solr_std[@collection] = RSolr.connect :url => @url
     elsif @mode == MODE_SOLRCLOUD then
       @zk = ZK.new(@zk_host)
       cloud_connection = RSolr::Cloud::Connection.new(@zk)
-      @solr = RSolr::Client.new(cloud_connection, read_timeout: 60, open_timeout: 60)
+      @solr_cloud = RSolr::Client.new(cloud_connection, read_timeout: 60, open_timeout: 60)
     end
 
     buffer_initialize(
@@ -94,12 +95,11 @@ class LogStash::Outputs::Solr < LogStash::Outputs::Base
       end
       
       @logger.info 'Record: %s' % document.inspect
-
+      
+      collection = @collection
       if @collection_field and document.has_key?(@collection_field) then
         collection = document[@collection_field]
         document.delete(@collection_field)
-      else
-        collection = @collection
       end
       
       documents = documents_per_col.fetch(collection, [])
@@ -115,11 +115,13 @@ class LogStash::Outputs::Solr < LogStash::Outputs::Base
     
     documents_per_col.each do |collection, documents|
       if @mode == MODE_STANDALONE then
-        @solr.add documents, :params => params
-        @logger.info 'Added %d document(s) to Solr' % documents.count
+        collection_url = @url.rpartition('/')[0] + '/' + collection
+        @solr_std[collection] ||= RSolr.connect :url => collection_url
+        @solr_std[collection].add documents, :params => params
+        @logger.info 'Added %d document(s) to Solr at "%s"' % [documents.count, collection_url]
       elsif @mode == MODE_SOLRCLOUD then
-        @solr.add documents, collection: @collection, :params => params
-        @logger.info 'Added %d document(s) to "%s" collection' % documents.count, collection
+        @solr_cloud.add documents, collection: collection, :params => params
+        @logger.info 'Added %d document(s) to "%s" collection' % [documents.count, collection]
       end
     end
 

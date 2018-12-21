@@ -154,6 +154,51 @@ describe LogStash::Outputs::Solr do
     end
   end
 
+  describe 'multiple_collections' do
+    before do
+      start_zookeeper
+    end
+
+    after do
+      stop_zookeeper
+    end
+
+    let(:config) {
+      {
+        'zk_host' => 'localhost:3292/solr',
+        'collection_field' => 'collection',
+        'flush_size' => 100
+      }
+    }
+
+    let(:sample_record1) {
+      {
+        'id' => 'test1',
+        'collection' => 'col1'
+      }
+    }
+    let(:sample_record2) {
+      {
+        'id' => 'test2',
+        'collection' => 'col2'
+      }
+    }
+    let(:sample_record3) {
+      {
+        'id' => 'test3'
+      }
+    }
+
+    it 'receive' do
+      output = LogStash::Outputs::Solr.new(config)
+      output.register
+
+      output.receive(sample_record1)
+      output.receive(sample_record2)
+      output.receive(sample_record3)
+    end
+  end
+
   def start_zookeeper
     @zk_server = ZK::Server.new do |config|
       config.client_port = 3292
