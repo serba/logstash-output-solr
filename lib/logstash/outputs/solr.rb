@@ -22,6 +22,9 @@ class LogStash::Outputs::Solr < LogStash::Outputs::Base
   # The SolrCloud collection name.
   config :collection, :validate => :string, :default => 'collection1'
 
+  # A field name with the name of collection to send document to
+  config :collection_field, :validate => :string, :default => nil
+
   # Commit every batch?
   config :commit, :validate => :boolean, :default => false
 
@@ -77,7 +80,7 @@ class LogStash::Outputs::Solr < LogStash::Outputs::Base
 
   public
   def flush(events, close=false)
-    documents = []
+    documents_per_col = {}
 
     events.each do |event|
       document = event.to_hash()
@@ -92,7 +95,15 @@ class LogStash::Outputs::Solr < LogStash::Outputs::Base
       
       @logger.info 'Record: %s' % document.inspect
 
+      if !@collection_field and document.has_key?(@collection_field) then
+        collection = document[@collection_field]
+      else
+        collection = @collection
+      end
+      
+      documents = documents_per_col.fetch(collection, [])
       documents.push(document)
+      documents_per_col[collection] = documents
     end
 
     params = {}
@@ -100,12 +111,15 @@ class LogStash::Outputs::Solr < LogStash::Outputs::Base
       params[:commit] = true
     end  
     params[:commitWithin] = @commitWithin
-    if @mode == MODE_STANDALONE then
-      @solr.add documents, :params => params
-      @logger.info 'Added %d document(s) to Solr' % documents.count
-    elsif @mode == MODE_SOLRCLOUD then
-      @solr.add documents, collection: @collection, :params => params
-      @logger.info 'Added %d document(s) to Solr' % documents.count
+    
+    hash.each do |collection, documents|
+      if @mode == MODE_STANDALONE then
+        @solr.add documents, :params => params
+        @logger.info 'Added %d document(s) to Solr' % documents.count
+      elsif @mode == MODE_SOLRCLOUD then
+        @solr.add documents, collection: @collection, :params => params
+        @logger.info 'Added %d document(s) to "%s" collection' % documents.count, collection
+      end
     end
 
     rescue Exception => e
