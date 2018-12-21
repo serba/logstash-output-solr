@@ -95,7 +95,7 @@ class LogStash::Outputs::Solr < LogStash::Outputs::Base
       
       @logger.info 'Record: %s' % document.inspect
 
-      if !@collection_field and document.has_key?(@collection_field) then
+      if @collection_field and document.has_key?(@collection_field) then
         collection = document[@collection_field]
         document.delete(@collection_field)
       else
