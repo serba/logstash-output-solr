@@ -94,7 +94,7 @@ class LogStash::Outputs::Solr < LogStash::Outputs::Base
         document.merge!({@timestamp_field => document['@timestamp']})
       end
       
-      @logger.info 'Record: %s' % document.inspect
+      @logger.debug 'Record: %s' % document.inspect
       
       collection = @collection
       if @collection_field and document.has_key?(@collection_field) then
